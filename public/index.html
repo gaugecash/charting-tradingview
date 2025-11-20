@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GAU Index - Historical Charts</title>
+  <meta name="description" content="GAU Index historical price charts vs 35 fiat currencies. Powered by TradingView.">
+
+  <!-- TradingView Advanced Charts Library -->
+  <script src="https://unpkg.com/tradingview-advanced-chart@latest/dist/tv-chart.min.js"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #131722;
+      color: #d1d4dc;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    header {
+      background: #1e222d;
+      border-bottom: 1px solid #2a2e39;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #f0f3fa;
+    }
+
+    .badge {
+      background: #2962ff;
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    /* Currency Selector */
+    .selector-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .selector-label {
+      font-size: 14px;
+      color: #b2b5be;
+    }
+
+    select {
+      background: #2a2e39;
+      color: #d1d4dc;
+      border: 1px solid #434651;
+      border-radius: 4px;
+      padding: 8px 32px 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      outline: none;
+      min-width: 200px;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23787b86' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+
+    select:hover {
+      border-color: #5d606b;
+    }
+
+    select:focus {
+      border-color: #2962ff;
+    }
+
+    optgroup {
+      font-weight: 600;
+      color: #f0f3fa;
+      background: #1e222d;
+    }
+
+    option {
+      padding: 8px;
+      background: #2a2e39;
+      color: #d1d4dc;
+    }
+
+    /* Chart Container */
+    #tv_chart_container {
+      flex: 1;
+      background: #131722;
+      position: relative;
+    }
+
+    /* Footer */
+    footer {
+      background: #1e222d;
+      border-top: 1px solid #2a2e39;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 12px;
+      color: #787b86;
+    }
+
+    .footer-left,
+    .footer-right {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .footer-link {
+      color: #2962ff;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .footer-link:hover {
+      color: #5e8cff;
+    }
+
+    .divider {
+      color: #434651;
+    }
+
+    /* Loading State */
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 10;
+    }
+
+    .spinner {
+      border: 3px solid #2a2e39;
+      border-top: 3px solid #2962ff;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 12px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      header {
+        padding: 12px 16px;
+      }
+
+      h1 {
+        font-size: 18px;
+      }
+
+      .selector-container {
+        width: 100%;
+      }
+
+      select {
+        flex: 1;
+      }
+
+      footer {
+        padding: 12px 16px;
+        font-size: 11px;
+      }
+
+      .footer-left,
+      .footer-right {
+        gap: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-title">
+      <h1>GAU Index Charts</h1>
+      <span class="badge">Live</span>
+    </div>
+    <div class="selector-container">
+      <label class="selector-label" for="currency-select">Currency:</label>
+      <select id="currency-select">
+        <!-- Options populated by JavaScript -->
+      </select>
+    </div>
+  </header>
+
+  <!-- Chart Container -->
+  <div id="tv_chart_container">
+    <div class="loading">
+      <div class="spinner"></div>
+      <div>Loading chart...</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-left">
+      <span>Charts powered by <a href="https://www.tradingview.com/" class="footer-link" target="_blank" rel="noopener">TradingView</a></span>
+      <span class="divider">|</span>
+      <span>Data by <a href="https://gaugecash.com" class="footer-link" target="_blank" rel="noopener">Gauge Cash</a></span>
+    </div>
+    <div class="footer-right">
+      <span>Daily updates from 2002 to present</span>
+      <span class="divider">|</span>
+      <span id="last-update">Updated: Nov 2025</span>
+    </div>
+  </footer>
+
+  <!-- Configuration -->
+  <script src="config.js"></script>
+
+  <!-- Datafeed -->
+  <script src="datafeed.js"></script>
+
+  <!-- Main Application -->
+  <script>
+    let tvWidget = null;
+    let currentSymbol = 'GAUUSD';
+
+    // Populate currency selector
+    function populateCurrencySelector() {
+      const select = document.getElementById('currency-select');
+
+      Object.entries(CURRENCIES).forEach(([category, currencies]) => {
+        // Skip "GAU Index" category in dropdown (it's the default)
+        if (category === 'GAU Index') return;
+
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = category;
+
+        currencies.forEach(currency => {
+          const option = document.createElement('option');
+          option.value = currency.symbol;
+          option.textContent = `${currency.name} - ${currency.description}`;
+
+          if (currency.symbol === currentSymbol) {
+            option.selected = true;
+          }
+
+          optgroup.appendChild(option);
+        });
+
+        select.appendChild(optgroup);
+      });
+
+      // Add change event listener
+      select.addEventListener('change', (e) => {
+        const newSymbol = e.target.value;
+        if (newSymbol !== currentSymbol) {
+          currentSymbol = newSymbol;
+          loadChart(newSymbol);
+        }
+      });
+    }
+
+    // Initialize TradingView chart
+    function loadChart(symbol) {
+      console.log('Loading chart for symbol:', symbol);
+
+      // Remove existing widget if present
+      if (tvWidget !== null) {
+        tvWidget.remove();
+        tvWidget = null;
+      }
+
+      // Show loading state
+      document.querySelector('.loading').style.display = 'block';
+
+      // Create datafeed instance
+      const datafeed = new GAUDatafeed(API_BASE_URL);
+
+      // TradingView widget configuration
+      tvWidget = new TradingView.widget({
+        debug: false,
+        fullscreen: false,
+        symbol: symbol,
+        interval: '1D',
+        container: 'tv_chart_container',
+        datafeed: datafeed,
+        library_path: 'https://unpkg.com/tradingview-advanced-chart@latest/dist/charting_library/',
+        locale: 'en',
+        disabled_features: [
+          'use_localstorage_for_settings',
+          'volume_force_overlay',
+          'header_symbol_search',
+          'header_compare',
+          'header_screenshot',
+          'timeframes_toolbar'
+        ],
+        enabled_features: [
+          'study_templates'
+        ],
+        charts_storage_api_version: '1.1',
+        client_id: 'gaugecash.com',
+        user_id: 'public',
+        theme: 'dark',
+        custom_css_url: '',
+        loading_screen: {
+          backgroundColor: '#131722',
+          foregroundColor: '#2962ff'
+        },
+        overrides: {
+          'mainSeriesProperties.style': 2, // Line chart
+          'mainSeriesProperties.lineStyle.color': '#2962ff',
+          'mainSeriesProperties.lineStyle.linewidth': 2,
+          'paneProperties.background': '#131722',
+          'paneProperties.backgroundType': 'solid',
+          'scalesProperties.textColor': '#787b86',
+          'scalesProperties.lineColor': '#2a2e39'
+        },
+        studies_overrides: {},
+        time_frames: [
+          { text: '1y', resolution: '1D', description: '1 Year', title: '1Y' },
+          { text: '5y', resolution: '1D', description: '5 Years', title: '5Y' },
+          { text: '10y', resolution: '1D', description: '10 Years', title: '10Y' },
+          { text: '1000y', resolution: '1D', description: 'All', title: 'All' }
+        ],
+        favorites: {
+          intervals: ['1D'],
+          chartTypes: ['Area', 'Line']
+        }
+      });
+
+      // Hide loading state when chart is ready
+      tvWidget.onChartReady(() => {
+        console.log('Chart ready for:', symbol);
+        document.querySelector('.loading').style.display = 'none';
+
+        // Set chart title
+        tvWidget.headerReady().then(() => {
+          const currency = findCurrencyBySymbol(symbol);
+          if (currency) {
+            tvWidget.chart().setChartType(2); // Line chart
+          }
+        });
+      });
+    }
+
+    // Helper function to find currency info
+    function findCurrencyBySymbol(symbol) {
+      for (const category of Object.values(CURRENCIES)) {
+        const found = category.find(c => c.symbol === symbol);
+        if (found) return found;
+      }
+      return null;
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('Initializing GAU Index Charts');
+      populateCurrencySelector();
+      loadChart(currentSymbol);
+    });
+  </script>
+</body>
+</html>
