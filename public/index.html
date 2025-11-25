@@ -59,52 +59,91 @@
       text-transform: uppercase;
     }
 
-    /* Currency Selector */
-    .selector-container {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .selector-label {
-      font-size: 14px;
-      color: #b2b5be;
-    }
-
-    select {
+    /* Currency Comparison Panel */
+    .comparison-panel {
       background: #2a2e39;
-      color: #d1d4dc;
       border: 1px solid #434651;
       border-radius: 4px;
-      padding: 8px 32px 8px 12px;
+      padding: 16px;
+      max-width: 500px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .comparison-title {
       font-size: 14px;
-      cursor: pointer;
-      outline: none;
-      min-width: 200px;
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23787b86' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 12px center;
-    }
-
-    select:hover {
-      border-color: #5d606b;
-    }
-
-    select:focus {
-      border-color: #2962ff;
-    }
-
-    optgroup {
       font-weight: 600;
       color: #f0f3fa;
-      background: #1e222d;
+      margin-bottom: 12px;
     }
 
-    option {
-      padding: 8px;
-      background: #2a2e39;
+    .currency-group {
+      margin-bottom: 16px;
+    }
+
+    .currency-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .group-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #787b86;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .currency-options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .currency-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      padding: 4px 0;
+      transition: color 0.2s;
+    }
+
+    .currency-checkbox:hover {
+      color: #f0f3fa;
+    }
+
+    .currency-checkbox input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: #2962ff;
+    }
+
+    .currency-checkbox label {
+      font-size: 13px;
       color: #d1d4dc;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    /* Scrollbar styling */
+    .comparison-panel::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .comparison-panel::-webkit-scrollbar-track {
+      background: #1e222d;
+      border-radius: 4px;
+    }
+
+    .comparison-panel::-webkit-scrollbar-thumb {
+      background: #434651;
+      border-radius: 4px;
+    }
+
+    .comparison-panel::-webkit-scrollbar-thumb:hover {
+      background: #5d606b;
     }
 
     /* Chart Container */
@@ -185,12 +224,8 @@
         font-size: 18px;
       }
 
-      .selector-container {
-        width: 100%;
-      }
-
-      select {
-        flex: 1;
+      .comparison-panel {
+        max-width: 100%;
       }
 
       footer {
@@ -212,11 +247,9 @@
       <h1>GAU Index Charts</h1>
       <span class="badge">Live</span>
     </div>
-    <div class="selector-container">
-      <label class="selector-label" for="currency-select">Currency:</label>
-      <select id="currency-select">
-        <!-- Options populated by JavaScript -->
-      </select>
+    <div class="comparison-panel" id="currency-comparison">
+      <div class="comparison-title">Compare Currencies</div>
+      <!-- Checkboxes populated by JavaScript -->
     </div>
   </header>
 
@@ -256,42 +289,100 @@
     let tvWidget = null;
     let currentSymbol = 'GAU';
 
-    // Populate currency selector
-    function populateCurrencySelector() {
-      const select = document.getElementById('currency-select');
+    // Track active comparison studies: Map(symbol → studyId)
+    const activeStudies = new Map();
+
+    // Populate currency comparison checkboxes
+    function populateComparisonPanel() {
+      const panel = document.getElementById('currency-comparison');
 
       Object.entries(CURRENCIES).forEach(([category, currencies]) => {
-        // Skip "GAU Index" category in dropdown (it's the default)
+        // Skip "GAU Index" category
         if (category === 'GAU Index') return;
 
-        const optgroup = document.createElement('optgroup');
-        optgroup.label = category;
+        // Create group container
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'currency-group';
+
+        // Group label
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'group-label';
+        labelDiv.textContent = category;
+        groupDiv.appendChild(labelDiv);
+
+        // Currency options container
+        const optionsDiv = document.createElement('div');
+        optionsDiv.className = 'currency-options';
 
         currencies.forEach(currency => {
-          const option = document.createElement('option');
-          // Extract just the symbol name (GAU, EUR, GBP, etc.)
+          // Extract just the symbol name (EUR, GBP, etc.)
           const symbolName = currency.symbol.replace(/^GAU/, '');
-          option.value = symbolName || 'GAU';
-          option.textContent = `${currency.name} - ${currency.description}`;
 
-          if (option.value === currentSymbol) {
-            option.selected = true;
-          }
+          // Create checkbox container
+          const checkboxDiv = document.createElement('label');
+          checkboxDiv.className = 'currency-checkbox';
 
-          optgroup.appendChild(option);
+          // Create checkbox input
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.id = `check-${symbolName}`;
+          checkbox.value = symbolName;
+          checkbox.addEventListener('change', (e) => handleComparisonToggle(e.target.value, e.target.checked));
+
+          // Create label
+          const label = document.createElement('span');
+          label.textContent = `${symbolName} - ${currency.description}`;
+
+          checkboxDiv.appendChild(checkbox);
+          checkboxDiv.appendChild(label);
+          optionsDiv.appendChild(checkboxDiv);
         });
 
-        select.appendChild(optgroup);
+        groupDiv.appendChild(optionsDiv);
+        panel.appendChild(groupDiv);
       });
+    }
 
-      // Add change event listener
-      select.addEventListener('change', (e) => {
-        const newSymbol = e.target.value;
-        if (newSymbol !== currentSymbol) {
-          currentSymbol = newSymbol;
-          loadChart(newSymbol);
+    // Handle checkbox toggle for comparison studies
+    function handleComparisonToggle(symbol, isChecked) {
+      console.log('===== Comparison Toggle =====');
+      console.log('Symbol:', symbol, 'Checked:', isChecked);
+
+      if (!tvWidget) {
+        console.error('Widget not initialized yet');
+        return;
+      }
+
+      if (isChecked) {
+        // Add comparison study
+        console.log('Adding comparison study for:', symbol);
+
+        tvWidget.onChartReady(() => {
+          try {
+            const studyId = tvWidget.chart().createStudy('Compare', false, false, ['close', symbol]);
+            activeStudies.set(symbol, studyId);
+            console.log('✓ Study created with ID:', studyId);
+          } catch (error) {
+            console.error('❌ Error creating study:', error);
+          }
+        });
+      } else {
+        // Remove comparison study
+        console.log('Removing comparison study for:', symbol);
+
+        const studyId = activeStudies.get(symbol);
+        if (studyId) {
+          tvWidget.onChartReady(() => {
+            try {
+              tvWidget.chart().removeEntity(studyId);
+              activeStudies.delete(symbol);
+              console.log('✓ Study removed:', studyId);
+            } catch (error) {
+              console.error('❌ Error removing study:', error);
+            }
+          });
         }
-      });
+      }
     }
 
     // Initialize TradingView chart
@@ -343,7 +434,7 @@
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', () => {
       console.log('Initializing GAU Index Charts');
-      populateCurrencySelector();
+      populateComparisonPanel();
       loadChart(currentSymbol);
     });
   </script>
