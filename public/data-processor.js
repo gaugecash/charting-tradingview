@@ -25,15 +25,15 @@ function processSourceRecords(records) {
     // Create TradingView bar
     // Since we only have daily close prices, we use:
     // - open: previous day's close
-    // - high: current day's close
-    // - low: current day's close
     // - close: current day's close
+    // - high: max(open, close) - ensures valid OHLC
+    // - low: min(open, close) - ensures valid OHLC
     const bar = {
       time: time,           // TradingView requires bar time in ms
-      low: el.close,
-      high: el.close,
       open: prev.close,     // Use previous close as open
-      close: el.close
+      close: el.close,
+      high: Math.max(prev.close, el.close),
+      low: Math.min(prev.close, el.close)
     };
 
     bars.push(bar);
