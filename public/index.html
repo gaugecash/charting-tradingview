@@ -6,8 +6,8 @@
   <title>GAU Index - Historical Charts</title>
   <meta name="description" content="GAU Index historical price charts vs 35 fiat currencies. Powered by TradingView.">
 
-  <!-- TradingView Advanced Charts Library -->
-  <script src="https://unpkg.com/tradingview-advanced-chart@latest/dist/tv-chart.min.js"></script>
+  <!-- TradingView Lightweight Charts Library -->
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 
   <style>
     * {
@@ -245,12 +245,10 @@
   <!-- Configuration -->
   <script src="config.js"></script>
 
-  <!-- Datafeed -->
-  <script src="datafeed.js"></script>
-
   <!-- Main Application -->
   <script>
-    let tvWidget = null;
+    let chart = null;
+    let lineSeries = null;
     let currentSymbol = 'GAUUSD';
 
     // Populate currency selector
@@ -289,102 +287,98 @@
       });
     }
 
-    // Initialize TradingView chart
-    function loadChart(symbol) {
-      console.log('Loading chart for symbol:', symbol);
+    // Initialize Lightweight Charts
+    function initChart() {
+      const container = document.getElementById('tv_chart_container');
 
-      // Remove existing widget if present
-      if (tvWidget !== null) {
-        tvWidget.remove();
-        tvWidget = null;
-      }
-
-      // Show loading state
-      document.querySelector('.loading').style.display = 'block';
-
-      // Create datafeed instance
-      const datafeed = new GAUDatafeed(API_BASE_URL);
-
-      // TradingView widget configuration
-      tvWidget = new TradingView.widget({
-        debug: false,
-        fullscreen: false,
-        symbol: symbol,
-        interval: '1D',
-        container: 'tv_chart_container',
-        datafeed: datafeed,
-        library_path: 'https://unpkg.com/tradingview-advanced-chart@latest/dist/charting_library/',
-        locale: 'en',
-        disabled_features: [
-          'use_localstorage_for_settings',
-          'volume_force_overlay',
-          'header_symbol_search',
-          'header_compare',
-          'header_screenshot',
-          'timeframes_toolbar'
-        ],
-        enabled_features: [
-          'study_templates'
-        ],
-        charts_storage_api_version: '1.1',
-        client_id: 'gaugecash.com',
-        user_id: 'public',
-        theme: 'dark',
-        custom_css_url: '',
-        loading_screen: {
-          backgroundColor: '#131722',
-          foregroundColor: '#2962ff'
+      chart = LightweightCharts.createChart(container, {
+        width: container.clientWidth,
+        height: container.clientHeight,
+        layout: {
+          background: { type: 'solid', color: '#131722' },
+          textColor: '#d1d4dc',
         },
-        overrides: {
-          'mainSeriesProperties.style': 2, // Line chart
-          'mainSeriesProperties.lineStyle.color': '#2962ff',
-          'mainSeriesProperties.lineStyle.linewidth': 2,
-          'paneProperties.background': '#131722',
-          'paneProperties.backgroundType': 'solid',
-          'scalesProperties.textColor': '#787b86',
-          'scalesProperties.lineColor': '#2a2e39'
+        grid: {
+          vertLines: { color: '#2a2e39' },
+          horzLines: { color: '#2a2e39' },
         },
-        studies_overrides: {},
-        time_frames: [
-          { text: '1y', resolution: '1D', description: '1 Year', title: '1Y' },
-          { text: '5y', resolution: '1D', description: '5 Years', title: '5Y' },
-          { text: '10y', resolution: '1D', description: '10 Years', title: '10Y' },
-          { text: '1000y', resolution: '1D', description: 'All', title: 'All' }
-        ],
-        favorites: {
-          intervals: ['1D'],
-          chartTypes: ['Area', 'Line']
-        }
+        crosshair: {
+          mode: LightweightCharts.CrosshairMode.Normal,
+        },
+        rightPriceScale: {
+          borderColor: '#2a2e39',
+        },
+        timeScale: {
+          borderColor: '#2a2e39',
+          timeVisible: true,
+          secondsVisible: false,
+        },
       });
 
-      // Hide loading state when chart is ready
-      tvWidget.onChartReady(() => {
-        console.log('Chart ready for:', symbol);
-        document.querySelector('.loading').style.display = 'none';
+      lineSeries = chart.addLineSeries({
+        color: '#2962ff',
+        lineWidth: 2,
+      });
 
-        // Set chart title
-        tvWidget.headerReady().then(() => {
-          const currency = findCurrencyBySymbol(symbol);
-          if (currency) {
-            tvWidget.chart().setChartType(2); // Line chart
-          }
+      // Handle window resize
+      window.addEventListener('resize', () => {
+        chart.applyOptions({
+          width: container.clientWidth,
+          height: container.clientHeight,
         });
       });
     }
 
-    // Helper function to find currency info
-    function findCurrencyBySymbol(symbol) {
-      for (const category of Object.values(CURRENCIES)) {
-        const found = category.find(c => c.symbol === symbol);
-        if (found) return found;
+    // Load chart data for a symbol
+    async function loadChart(symbol) {
+      console.log('Loading chart for symbol:', symbol);
+
+      // Show loading state
+      document.querySelector('.loading').style.display = 'block';
+
+      try {
+        // Convert symbol to lowercase for API (GAUUSD -> gauusd)
+        const apiSymbol = symbol.toLowerCase();
+        const response = await fetch(`${API_BASE_URL}/${apiSymbol}`);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Convert API format to Lightweight Charts format
+        // API: [{"datetime": "2025-11-20", "close": 1.7992}, ...]
+        // Chart: [{time: "2025-11-20", value: 1.7992}, ...]
+        const chartData = data
+          .map(d => ({
+            time: d.datetime,
+            value: parseFloat(d.close)
+          }))
+          .sort((a, b) => a.time.localeCompare(b.time));
+
+        // Update chart data
+        lineSeries.setData(chartData);
+
+        // Fit content to view
+        chart.timeScale().fitContent();
+
+        console.log(`Chart loaded: ${chartData.length} data points from ${chartData[0]?.time} to ${chartData[chartData.length - 1]?.time}`);
+
+        // Hide loading state
+        document.querySelector('.loading').style.display = 'none';
+
+      } catch (error) {
+        console.error('Error loading chart data:', error);
+        document.querySelector('.loading div:last-child').textContent = 'Error loading chart data. Please try again.';
       }
-      return null;
     }
 
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', () => {
       console.log('Initializing GAU Index Charts');
       populateCurrencySelector();
+      initChart();
       loadChart(currentSymbol);
     });
   </script>
