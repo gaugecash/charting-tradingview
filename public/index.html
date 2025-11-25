@@ -59,8 +59,39 @@
       text-transform: uppercase;
     }
 
+    /* Compare Button */
+    .compare-button {
+      background: #2a2e39;
+      border: 1px solid #434651;
+      border-radius: 4px;
+      padding: 8px 16px;
+      color: #d1d4dc;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .compare-button:hover {
+      background: #434651;
+      color: #f0f3fa;
+    }
+
+    .compare-button.active {
+      background: #2962ff;
+      color: #fff;
+      border-color: #2962ff;
+    }
+
     /* Currency Comparison Panel */
     .comparison-panel {
+      display: none; /* Start collapsed */
+      position: absolute;
+      top: 70px;
+      right: 24px;
       background: #2a2e39;
       border: 1px solid #434651;
       border-radius: 4px;
@@ -68,6 +99,12 @@
       max-width: 500px;
       max-height: 400px;
       overflow-y: auto;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+    }
+
+    .comparison-panel.open {
+      display: block;
     }
 
     .comparison-title {
@@ -224,8 +261,16 @@
         font-size: 18px;
       }
 
+      .compare-button {
+        padding: 6px 12px;
+        font-size: 13px;
+      }
+
       .comparison-panel {
-        max-width: 100%;
+        top: 60px;
+        right: 16px;
+        left: 16px;
+        max-width: none;
       }
 
       footer {
@@ -247,11 +292,17 @@
       <h1>GAU Index Charts</h1>
       <span class="badge">Live</span>
     </div>
-    <div class="comparison-panel" id="currency-comparison">
-      <div class="comparison-title">Compare Currencies</div>
-      <!-- Checkboxes populated by JavaScript -->
-    </div>
+    <button class="compare-button" id="compare-toggle">
+      <span>Compare</span>
+      <span id="compare-arrow">▼</span>
+    </button>
   </header>
+
+  <!-- Comparison Panel (Dropdown) -->
+  <div class="comparison-panel" id="currency-comparison">
+    <div class="comparison-title">Compare Currencies</div>
+    <!-- Checkboxes populated by JavaScript -->
+  </div>
 
   <!-- Chart Container -->
   <div id="tv_chart_container">
@@ -318,6 +369,12 @@
           // Extract just the symbol name (EUR, GBP, etc.)
           const symbolName = currency.symbol.replace(/^GAU/, '');
 
+          // FIX 1: Skip USD since it's already the base chart
+          if (symbolName === 'USD') {
+            console.log('Skipping USD checkbox (already base chart)');
+            return;
+          }
+
           // Create checkbox container
           const checkboxDiv = document.createElement('label');
           checkboxDiv.className = 'currency-checkbox';
@@ -341,6 +398,39 @@
         groupDiv.appendChild(optionsDiv);
         panel.appendChild(groupDiv);
       });
+    }
+
+    // FIX 2: Toggle comparison panel visibility
+    function toggleComparePanel() {
+      const panel = document.getElementById('currency-comparison');
+      const button = document.getElementById('compare-toggle');
+      const arrow = document.getElementById('compare-arrow');
+
+      const isOpen = panel.classList.contains('open');
+
+      if (isOpen) {
+        panel.classList.remove('open');
+        button.classList.remove('active');
+        arrow.textContent = '▼';
+        console.log('Compare panel closed');
+      } else {
+        panel.classList.add('open');
+        button.classList.add('active');
+        arrow.textContent = '▲';
+        console.log('Compare panel opened');
+      }
+    }
+
+    // Close panel when clicking outside
+    function handleClickOutside(event) {
+      const panel = document.getElementById('currency-comparison');
+      const button = document.getElementById('compare-toggle');
+
+      if (!panel.contains(event.target) && !button.contains(event.target)) {
+        if (panel.classList.contains('open')) {
+          toggleComparePanel();
+        }
+      }
     }
 
     // Handle checkbox toggle for comparison studies
@@ -436,6 +526,13 @@
       console.log('Initializing GAU Index Charts');
       populateComparisonPanel();
       loadChart(currentSymbol);
+
+      // FIX 2: Add toggle button click listener
+      const compareToggle = document.getElementById('compare-toggle');
+      compareToggle.addEventListener('click', toggleComparePanel);
+
+      // FIX 2: Add click-outside listener
+      document.addEventListener('click', handleClickOutside);
     });
   </script>
 </body>
