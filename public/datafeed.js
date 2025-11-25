@@ -1,12 +1,18 @@
 // GAU Index Datafeed for TradingView Charting Library
 // Implements IBasicDataFeed interface
 
-// Import data processor
-const { processSourceRecords } = window.DataProcessor || {};
-
 const config = {
   supported_resolutions: ['D', 'W', 'M', '3M', 'Y']
 };
+
+// Helper function to get processSourceRecords
+function getProcessor() {
+  if (!window.DataProcessor || !window.DataProcessor.processSourceRecords) {
+    console.error('ERROR: DataProcessor not loaded!');
+    throw new Error('DataProcessor not available');
+  }
+  return window.DataProcessor.processSourceRecords;
+}
 
 // 35 currency symbols
 const symbols = [
@@ -94,8 +100,12 @@ const dataCache = new DataCache();
 // Datafeed implementation
 const GAUDatafeed = {
   onReady: (cb) => {
-    console.log('=====onReady running');
-    setTimeout(() => cb(config), 0);
+    console.log('===== DATAFEED: onReady called =====');
+    console.log('Config:', config);
+    setTimeout(() => {
+      cb(config);
+      console.log('✓ onReady callback executed');
+    }, 0);
   },
 
   searchSymbols: (userInput, exchange, symbolType, cb) => {
@@ -124,7 +134,9 @@ const GAUDatafeed = {
   },
 
   resolveSymbol: (symbolName, onSymbolResolvedCallback, onResolveErrorCallback) => {
-    console.log('======resolveSymbol running: ' + symbolName);
+    console.log('===== DATAFEED: resolveSymbol called =====');
+    console.log('Symbol name:', symbolName);
+
     const symbol_stub = {
       name: symbolName,
       description: symbolName + ':USD',
@@ -141,30 +153,37 @@ const GAUDatafeed = {
       data_status: 'streaming'
     };
 
+    console.log('Symbol info:', symbol_stub);
+
     setTimeout(function() {
       onSymbolResolvedCallback(symbol_stub);
+      console.log('✓ resolveSymbol callback executed');
     }, 0);
   },
 
   getBars: async (symbolInfo, resolution, periodParams, onResult, onError) => {
-    console.log('======getBars running for:', symbolInfo.name);
-    console.log('Trying to recover from cache');
+    console.log('===== DATAFEED: getBars called =====');
+    console.log('Symbol:', symbolInfo.name);
+    console.log('Resolution:', resolution);
+    console.log('Period params:', periodParams);
 
-    const symbol = symbolInfo.name.toLowerCase();
+    try {
+      const symbol = symbolInfo.name.toLowerCase();
+      console.log('Fetching data for symbol:', symbol);
 
-    let records;
+      let records;
 
-    // Try cache first
-    const cachedData = dataCache.get(symbol);
+      // Try cache first
+      const cachedData = dataCache.get(symbol);
 
-    if (cachedData) {
-      console.log('There is a cache!');
-      records = cachedData;
-    } else {
-      // Fetch from API
-      try {
+      if (cachedData) {
+        console.log('✓ Cache HIT for:', symbol);
+        records = cachedData;
+      } else {
+        console.log('✗ Cache MISS - Fetching from API');
+        // Fetch from API
         const url = `https://oxr-data-server-mqoo.vercel.app/${symbol}usd`;
-        console.log('Fetching from:', url);
+        console.log('API URL:', url);
 
         const response = await fetch(url);
         if (!response.ok) {
@@ -172,34 +191,46 @@ const GAUDatafeed = {
         }
 
         records = await response.json();
+        console.log('✓ API returned', records.length, 'records');
 
         // Cache the response
         dataCache.set(symbol, records);
-
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        onError(error.message);
-        return;
       }
+
+      // Get processor function
+      const processSourceRecords = getProcessor();
+
+      // Process records to TradingView bar format
+      console.log('Processing records to bars...');
+      const bars = processSourceRecords(records);
+      console.log('✓ Processed', bars.length, 'bars');
+
+      // Filter by date range
+      const to = periodParams.to * 1000;
+      const from = periodParams.from * 1000;
+
+      const filtered = bars.filter((el) => {
+        return el.time >= from && el.time <= to;
+      });
+
+      console.log('== RESULT ==');
+      console.log('Date range:', new Date(from).toISOString(), 'to', new Date(to).toISOString());
+      console.log('Requested:', periodParams.countBack, 'bars');
+      console.log('Returning:', filtered.length, 'bars');
+
+      if (filtered.length > 0) {
+        console.log('First bar:', new Date(filtered[0].time).toISOString(), filtered[0]);
+        console.log('Last bar:', new Date(filtered[filtered.length - 1].time).toISOString(), filtered[filtered.length - 1]);
+      }
+
+      onResult(filtered, { noData: bars.length == 0 });
+      console.log('✓ getBars completed successfully');
+
+    } catch (error) {
+      console.error('❌ ERROR in getBars:', error);
+      console.error('Stack:', error.stack);
+      onError(error.message);
     }
-
-    // Process records to TradingView bar format
-    const bars = processSourceRecords(records);
-
-    // Filter by date range
-    const to = periodParams.to * 1000;
-    const from = periodParams.from * 1000;
-
-    const filtered = bars.filter((el) => {
-      return el.time >= from && el.time <= to;
-    });
-
-    console.log('== INFO ==');
-    console.log('from, to: ', periodParams.from, periodParams.to);
-    console.log('requested: ', periodParams.countBack);
-    console.log('given: ', filtered.length);
-
-    onResult(filtered, { noData: bars.length == 0 });
   },
 
   subscribeBars: (symbolInfo, resolution, onRealtimeCallback, subscribeUID, onResetCacheNeededCallback) => {

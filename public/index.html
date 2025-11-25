@@ -309,7 +309,7 @@
 
       // TradingView widget configuration
       const widgetOptions = {
-        debug: false,
+        debug: true,  // ENABLED FOR DEBUGGING
         fullscreen: false,
         symbol: symbol,
         interval: 'W',
@@ -326,6 +326,10 @@
         theme: 'Dark',
         autosize: true
       };
+
+      console.log('Widget options:', widgetOptions);
+      console.log('Datafeed available:', !!window.GAUDatafeed);
+      console.log('DataProcessor available:', !!window.DataProcessor);
 
       tvWidget = new TradingView.widget(widgetOptions);
 
