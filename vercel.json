@@ -11,6 +11,17 @@
   "trailingSlash": false,
   "redirects": [
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "charting.gaugecash.com"
+        }
+      ],
+      "destination": "https://gau-history.gaugecash.org/",
+      "permanent": true
+    },
+    {
       "source": "/:path*",
       "has": [
         {
