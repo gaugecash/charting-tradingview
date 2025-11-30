@@ -9,6 +9,19 @@
   },
   "cleanUrls": true,
   "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "charting.gaugecash.com"
+        }
+      ],
+      "destination": "https://gau-history.gaugecash.org/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/",
