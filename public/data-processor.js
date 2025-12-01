@@ -13,9 +13,9 @@
 function processSourceRecords(records) {
   const bars = [];
 
-  // Loop from index 1 to length-1 (skip first and last records)
+  // Loop from index 1 to end (skip only first record)
   // We need previous record to calculate open price
-  for (let i = 1; i < records.length - 1; i++) {
+  for (let i = 1; i < records.length; i++) {
     const el = records[i];
     const prev = records[i - 1];
 
