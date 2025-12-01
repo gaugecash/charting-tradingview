@@ -56,7 +56,7 @@ const symbols = [
 // Simple localStorage cache with 12-hour TTL
 class DataCache {
   constructor() {
-    this.cacheKey = 'gau_data_cache_v3';
+    this.cacheKey = 'gau_data_cache_v4';
   }
 
   get(symbol) {
