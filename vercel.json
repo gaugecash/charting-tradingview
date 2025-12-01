@@ -45,11 +45,11 @@
   ],
   "headers": [
     {
-      "source": "/public/(.*)",
+      "source": "/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "no-cache, must-revalidate"
+          "value": "public, max-age=0, s-maxage=0, must-revalidate"
         },
         {
           "key": "X-Content-Type-Options",
